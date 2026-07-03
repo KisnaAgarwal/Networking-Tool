@@ -4,7 +4,9 @@
 
 int main(){
     Host user;
-    user.showName();
-    user.showInterface();
+    user.getName();
+    cout<<"Host Name :" <<user.Hostname<<endl;
+    user.getInterface();
+    user.showNetworkInterface();
     return 0;
 }
