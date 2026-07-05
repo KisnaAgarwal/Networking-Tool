@@ -1,4 +1,5 @@
 #include <string>
+#include <vector>
 using namespace std;
 
 class NetworkInterface{
@@ -10,5 +11,8 @@ class NetworkInterface{
     string ipv6_subnetmask;
     string mac_addr;
     unsigned int flag;
+    string type;
+    vector <string> CurrentDnsServers;
+
 };
 

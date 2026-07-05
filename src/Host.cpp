@@ -1,4 +1,5 @@
 #include <iostream>
+#include <cctype>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <unistd.h>
@@ -9,9 +10,10 @@
 #include <vector>
 #include <iomanip>
 #include <sstream>
-#include <Host.hpp>
 #include <net/if.h> // for IFF tags
 #include <sys/ioctl.h>// for IFF tags
+#include <fstream> //file handeling
+#include <Host.hpp>
 
 
 using namespace std;
@@ -42,7 +44,7 @@ void Host::getInterface(){
        NetworkInterface & Curr_If = HostInterface[curr->ifa_name]; 
        Curr_If.name = curr->ifa_name;
        Curr_If.flag = curr->ifa_flags;
-
+       getInterfaceType(Curr_If); //for type
 
        //for Ip adrress :
         if(curr->ifa_addr != nullptr){
@@ -104,8 +106,11 @@ void Host::getInterface(){
                 }
             }
 
-            //for flags 
-            
+
+            //for dns :  
+            if(Curr_If.CurrentDnsServers.empty()){
+                getCurrentDns(Curr_If);        
+            }  
 
         curr = curr->ifa_next;
     }
@@ -118,6 +123,7 @@ void Host::showNetworkInterface()
     {
         cout << "========================================\n";
         cout << "Interface Name     : " << iface.name << '\n';
+        cout << "Interface Type     : " << iface.type << '\n';
         cout << "  IPv4 Address     : " << iface.ipv4 << '\n';
         cout << "  IPv4 Subnet Mask : " << iface.ipv4_subnetmask << '\n';
         cout << "  IPv6 Address     : " << iface.ipv6 << '\n';
@@ -133,11 +139,105 @@ void Host::showNetworkInterface()
         if (iface.flag & IFF_PROMISC)      cout << "PROMISC ";
         if (iface.flag & IFF_NOARP)        cout << "NOARP ";
         if (iface.flag & IFF_ALLMULTI)     cout << "ALLMULTI ";
-        if (iface.flag & IFF_DEBUG)        cout << "DEBUG ";
-
+        if (iface.flag & IFF_DEBUG)        cout << "DEBUG ";        
+        cout<<endl;
+        if(iface.CurrentDnsServers.empty()){
+            cout<< " No Dns Server \n";
+        }else{
+            cout<<" Current DNS Server :"<<endl;
+        for (const auto & dns : iface.CurrentDnsServers){
+            cout<<"  "<<dns<<endl;
+        }    
+        }
         cout << '\n';
-    }
+    }     
 }
 
 
+void ::Host ::getDns(){
+    string line;
+    ifstream file ("/etc/resolv.conf");
+    if (!file.is_open()) {
+        cout<< "Failed to open /etc/resolv.conf\n";
+        return;
+    }
+    while(getline(file,line)){
+        if(line.rfind("nameserver",0)==0){
+            line.erase(0,11);
+            DefaultDnsServers.push_back(line);
+        }
+    }
+    
+}
+
+void::Host::getCurrentDns(NetworkInterface & obj){
+    FILE* currdns = popen("resolvectl dns", "r");
+    if(currdns==nullptr){
+        cout<<"error in running resolvectl dns command : unable to fetch current dns";
+        return;
+    }
+
+    char temp [256];
+    while (fgets(temp,sizeof(temp),currdns))
+    {
+        string line = temp;//happens because fgets puts a null terminator at the end of string hence allowing to convert char array to string
+        if(line.find("Link",0)!=0){
+            continue;
+        }
+        size_t type_of_file = line.find(obj.name);
+        if(type_of_file != string::npos){
+             size_t position = line.find(":");
+            if(position != string ::npos){
+                    string dns = line.substr(position+1);
+
+                while(!dns.empty() && isspace(dns.front())){
+                 dns.erase(0,1);
+            }
+                while(!dns.empty() && dns.back()=='\n'){
+                    dns.pop_back();
+            }
+            obj.CurrentDnsServers.push_back(dns);
+        }
+    }
+        }
+
+       
+    pclose(currdns);
+    
+}
+
+void Host::getInterfaceType(NetworkInterface & obj){
+    if( obj.name.find("wl",0)==0){
+        obj.type= "WIFI";
+    }
+    else if( obj.name.find("en",0)==0){
+        obj.type= "ENTERHNET";
+    }
+    else if( obj.name.find("lo",0)==0){
+        obj.type= "LOOPBACK";
+    }
+    else if( obj.name.find("tun",0)==0){
+        obj.type= "VPN TUNNEL";
+    }
+    else if( obj.name.find("br",0)==0){
+        obj.type= "brige";
+    }
+    else if( obj.name.find("veth",0)==0){
+        obj.type= "Virtual Ethernet";
+    }
+    else{
+        obj.type = "UNKNOWN";
+    }
+}
+
+void ::Host :: showGeneralDns(){
+    if (DefaultDnsServers.empty()) {
+            cout << "  None found\n";
+        }else{
+            cout<<"Default DNS Server :"<<endl;
+            for (const auto& dns : DefaultDnsServers) {
+            cout << "  " << dns << '\n';
+            }
+        } 
+}
 
