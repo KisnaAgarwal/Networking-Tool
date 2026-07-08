@@ -13,6 +13,6 @@ class NetworkInterface{
     unsigned int flag;
     string type;
     vector <string> CurrentDnsServers;
-
+    string Gateway;
 };
 

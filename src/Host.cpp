@@ -129,6 +129,7 @@ void Host::showNetworkInterface()
         cout << "  IPv6 Address     : " << iface.ipv6 << '\n';
         cout << "  IPv6 Subnet Mask : " << iface.ipv6_subnetmask << '\n';
         cout << "  MAC Address      : " << iface.mac_addr << '\n';
+        cout << "  Gateway          : " << iface.Gateway << '\n';
         cout << "  Flags            : ";
         if (iface.flag & IFF_UP)           cout << "UP ";
         if (iface.flag & IFF_RUNNING)      cout << "RUNNING ";
@@ -154,7 +155,7 @@ void Host::showNetworkInterface()
 }
 
 
-void ::Host ::getDns(){
+void ::Host ::getDns(){ //for default dns
     string line;
     ifstream file ("/etc/resolv.conf");
     if (!file.is_open()) {
@@ -241,3 +242,37 @@ void ::Host :: showGeneralDns(){
         } 
 }
 
+void Host:: getGateway(){
+     FILE * gateway_file = fopen("/proc/net/route","r");
+    if(gateway_file==nullptr){
+        cout<<"unable to open file";
+        return;
+    }
+    char temp[256];
+    fgets(temp,sizeof(temp),gateway_file);//to skip the first line
+    while(fgets(temp, sizeof(temp),gateway_file)){
+        stringstream ss(temp);
+        
+        string iface;
+        string destination;
+        string curr_gateway;
+
+        ss>>iface>>destination>>curr_gateway;
+        if(destination!="00000000"){
+            continue;
+        }
+        auto it = HostInterface.find(iface);
+        
+        stringstream conv;
+        conv << curr_gateway;
+        uint32_t conv_gateway;
+        conv>> hex >>conv_gateway; //convert into a uint32t from string
+        struct in_addr obj; // put into a struct used to store ipv4 addresses
+        obj.s_addr=(conv_gateway); //host to network long used to convert little endian to big endian    
+        char final_gateway[INET_ADDRSTRLEN];
+        if(inet_ntop(AF_INET,&obj,final_gateway,INET_ADDRSTRLEN)){
+            it->second.Gateway= final_gateway;
+        }
+    }
+    fclose(gateway_file);
+}

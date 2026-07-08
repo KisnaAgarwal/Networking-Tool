@@ -9,6 +9,7 @@ int main(){
     user.getDns();
     user.showGeneralDns();
     user.getInterface();
+    user.getGateway();
     user.showNetworkInterface();
     return 0;
 }

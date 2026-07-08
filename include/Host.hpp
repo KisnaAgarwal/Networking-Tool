@@ -17,6 +17,7 @@ class Host{
     void getInterfaceType(NetworkInterface & obj);
     void getDns();
     void getCurrentDns(NetworkInterface & obj);
+    void getGateway();
     void showNetworkInterface();
     void showGeneralDns();
 
